@@ -2,10 +2,16 @@
   "name": "backendapi",
   "version": "1.0.0",
   "description": "Backend API for frontend ecommerce apps",
-  "main": "app.js",
+  "main": "express.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.8",
+    "express": "^4.19.2",
+    "mongoose": "^8.3.2",
+    "mongoose-findorcreate": "^4.0.0"
+  }
 }
