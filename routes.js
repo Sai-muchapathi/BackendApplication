@@ -19,6 +19,6 @@ function handleProducts() {
 }
 
 function handleUsers() {
-
+    console.log("I'm called");
 }
 
