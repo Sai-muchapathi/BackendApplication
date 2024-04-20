@@ -63,6 +63,7 @@ const productSchema = new Schema({
 
 const User = mongoose.model('User', userSchema);
 const Product = mongoose.model('Product', productSchema);
+const { ObjectId } = require('mongodb'); // Import ObjectID from MongoDB
 
 
 app.get('/api/products/', async (req, res) => {
@@ -113,9 +114,12 @@ app.post('/api/users', async (req, res) => {
 
 app.delete('/api/product/:id', async (req, res) => {
     try {
-        const productId = JSON.parse(req.params.id);
+        const productId = req.params.id;
+        if (!ObjectId.isValid(productId)) {
+            return res.status(400).send('Invalid product ID');
+        }
         const deletedProduct =
-            await Product.findByIdAndDelete(ObjectID(productId));
+            await Product.findByIdAndDelete(productId);
         if(!deletedProduct) {
             return res.status(404).send('Product not found');
         }
@@ -129,17 +133,65 @@ app.delete('/api/product/:id', async (req, res) => {
 app.delete('/api/user/:id', async (req, res) => {
     try {
         const userId = req.params.id;
-        const deletedUser =
-            await User.findByIdAndDelete(userId);
-        if(!deletedUser) {
+        if (!ObjectId.isValid(userId)) {
+            return res.status(400).send('Invalid user ID');
+        }
+        const deletedUser = await User.findByIdAndDelete(userId);
+        if (!deletedUser) {
             return res.status(404).send('User not found');
         }
-        res.status(200).send('User record deleted successfully');
-    } catch(error) {
+        res.status(200).send('User deleted successfully');
+    } catch (error) {
         console.log("ERROR in deleting record: ", error);
         res.status(500).send('ERROR in deleting record.');
     }
-})
+});
+
+app.delete('/api/user', async (req, res) => {
+    try {
+        const userIds = req.body.selectedIndexes; // Expect an array of user IDs in the request body
+        const deletedUserIds = [];
+
+        for (const userId of userIds) {
+            // Find and delete the user with the given ID
+            const deletedUser = await User.findByIdAndDelete(userId);
+            if (!deletedUser) {
+                console.log(`Failed to delete user with ID ${userId}`);
+                continue; // Skip to the next user ID if deletion fails
+            }
+            deletedUserIds.push(deletedUser._id);
+        }
+
+        res.status(200).json({ deletedUserIds, message: 'Data deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting data:', error);
+        res.status(500).json({ error: 'Error deleting data' });
+    }
+});
+
+
+app.delete('/api/product', async (req, res) => {
+    try {
+        const productIds = req.body.selectedIndexes; // Expect an array of user IDs in the request body
+        const deletedProductIds = [];
+
+        for (const productId of productIds) {
+            // Find and delete the product with the given ID
+            const deletedProduct = await Product.findByIdAndDelete(productId);
+            if (!deletedProduct) {
+                console.log(`Failed to delete product with ID ${productId}`);
+                continue; // Skip to the next product ID if deletion fails
+            }
+            deletedProductIds.push(deletedProduct._id);
+        }
+
+        res.status(200).json({ deletedProductIds, message: 'Data deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting data:', error);
+        res.status(500).json({ error: 'Error deleting data' });
+    }
+});
+
 
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
