@@ -1,11 +1,20 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const {Schema} = require("mongoose");
 const app = express();
-const port = 3000;
+const port = 3001;
 
 // Middleware to parse JSON data
 app.use(express.json());
+
+// Define CORS options to allow requests only from port 3000
+const corsOptions = {
+    origin: 'http://localhost:3000',
+};
+
+// Enable CORS with specified options
+app.use(cors(corsOptions));
 
 
 // For some reason mongoose is working only with the 0.0.0.0
@@ -102,7 +111,35 @@ app.post('/api/users', async (req, res) => {
     }
 });
 
+app.delete('/api/product/:id', async (req, res) => {
+    try {
+        const productId = JSON.parse(req.params.id);
+        const deletedProduct =
+            await Product.findByIdAndDelete(ObjectID(productId));
+        if(!deletedProduct) {
+            return res.status(404).send('Product not found');
+        }
+        res.status(200).send('Product deleted successfully');
+    } catch(error) {
+        console.log("ERROR in deleting record: ", error);
+        res.status(500).send('ERROR in deleting record.');
+    }
+})
 
+app.delete('/api/user/:id', async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const deletedUser =
+            await User.findByIdAndDelete(userId);
+        if(!deletedUser) {
+            return res.status(404).send('User not found');
+        }
+        res.status(200).send('User record deleted successfully');
+    } catch(error) {
+        console.log("ERROR in deleting record: ", error);
+        res.status(500).send('ERROR in deleting record.');
+    }
+})
 
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
