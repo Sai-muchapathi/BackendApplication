@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const {Schema} = require("mongoose");
+const multer = require('multer');
 const app = express();
 const port = 3001;
 
@@ -54,7 +55,10 @@ const productSchema = new Schema({
     price: Number,
     description: String,
     category: String,
-    image: String,
+    image: {
+        data: Buffer, // Store binary data as Buffer
+        contentType: String // Store MIME type of the image
+    },
     rating: {
         rate: Number,
         count: Number
@@ -68,15 +72,49 @@ const { ObjectId } = require('mongodb'); // Import ObjectID from MongoDB
 
 app.get('/api/products/', async (req, res) => {
     try {
-        console.log('Inside try block');
         const products = await Product.find();
-        res.json(products);
+        const productsWithImageData = products.map(product => {
+            if (product.image && product.image.data) {
+                // If image data exists, assume it's Base64 encoded and create a data URI
+                return {
+                    id: product.id,
+                    title: product.title,
+                    price: product.price,
+                    description: product.description,
+                    category: product.category,
+                    image: `data:image/jpeg;base64,${product.image.data.toString('base64')}`
+                };
+            } else if (product.image && product.image.url) {
+                // If image URL exists, use it directly
+                return {
+                    id: product.id,
+                    title: product.title,
+                    price: product.price,
+                    description: product.description,
+                    category: product.category,
+                    image: product.image.url
+                };
+            } else {
+                // If neither image data nor URL exists, handle it as needed
+                return {
+                    id: product.id,
+                    title: product.title,
+                    price: product.price,
+                    description: product.description,
+                    category: product.category,
+                    image: null // or provide a default image URL here
+                };
+            }
+        });
+        res.json(productsWithImageData);
     } catch (error) {
-        console.log("Unable to fetch products data from the DB....");
-        console.log(error);
+        console.error("Unable to fetch products data from the DB:", error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+
+
 
 app.get('/api/users', async (req, res) => {
     try {
@@ -111,6 +149,32 @@ app.post('/api/users', async (req, res) => {
         res.status(500).send('Error inserting the new user record.');
     }
 });
+
+const upload = multer();
+
+app.post('/api/addProducts', upload.single('image'), async (req, res) => {
+    try {
+        const { title, price, description, category } = req.body;
+
+        const imageData = {
+            data: req.file.buffer, // Image data as Buffer
+            contentType: req.file.mimetype // MIME type of the image
+        };
+        const product = new Product({
+            title,
+            price,
+            description,
+            category,
+            image: imageData
+        });
+        await product.save();
+        res.status(201).json({ message: 'Product created successfully.' });
+    } catch (error) {
+        console.log('Error adding product: ', error);
+        res.status(500).send('Error inserting new product record.');
+    }
+});
+
 
 app.delete('/api/product/:id', async (req, res) => {
     try {
@@ -191,7 +255,6 @@ app.delete('/api/product', async (req, res) => {
         res.status(500).json({ error: 'Error deleting data' });
     }
 });
-
 
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
